@@ -93,25 +93,42 @@ class ApplicationStatus():
 
         _entry = self.__status_dict
 
-        _tmp_name = name
-        while _tmp_name:
+        _tmp_name = ""
+        _part = name
+        while _part:
             # Split the name
-            (_part, _, _rest) = _tmp_name.partition(".")
+            (_part, _, _rest) = _part.partition(".")
+            tmp_name = f"{_tmp_name}.{_part}"
 
-            # Is the name in the status dict?
             if not _part in _entry:
-                # Create the sub-tree
-                _entry[_part] = { "_default_": None }
+                if not _rest:
+                    # This is the entry to add the value to
+                    self.__lock.acquire()
+                    _entry[_part] = value
+                    self.__lock.release()
+                    _part = None
 
-            # If there is no more, add this entry under _default_               
-            if not _rest:
-                self.__lock.acquire()
-                _entry[_part]['_default_'] = value
-                self.__lock.release()
-                _tmp_name = None
+                else:
+                    # Create a nested dict (as there is more to the dot path)
+                    self.__lock.acquire()
+                    _entry[_part] = {}
+                    self.__lock.release()
+                    _entry = _entry[_part]
+
             else:
-                _entry = _entry[_part]
-                _tmp_name = _rest
+                if not _rest:
+                    # Make sure this is not a dict and then add the entry
+                    if isinstance(_entry[_part], dict):
+                        raise ValueError(f"Name has sub entries: {tmp_name}")
+
+                    self.__lock.acquire()
+                    _entry[_part] = value
+                    self.__lock.release()
+                    _part = None
+
+                else:
+                    if not isinstance(_entry[_part], dict):
+                        raise ValueError(f"Invalid nesting of values under: {tmp_name}")
 
         # Return the entry
         return True
@@ -150,9 +167,8 @@ class ApplicationStatus():
                 _tmp_name = _rest
             else:
                 # This should be the value
-                if '_default_' in _entry: _value = _entry['_default_']
+                _value = _entry
                 _tmp_name = None
-
 
         # Return the entry
         return _value
