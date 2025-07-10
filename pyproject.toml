@@ -17,6 +17,9 @@ classifiers = [
 ]
 dependencies = [
   "schedule",
+  "requests",
+  "urllib3",
+  "pytest",
 ]
 
 [project.urls]
