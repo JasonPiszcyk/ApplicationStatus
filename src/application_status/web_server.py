@@ -10,7 +10,9 @@
 *
 '''
 from http.server import BaseHTTPRequestHandler, HTTPServer
-import multiprocessing
+from threading import Thread
+
+from .application_status import Status
 
 
 #
@@ -46,13 +48,9 @@ class BasicWebServer(BaseHTTPRequestHandler):
 
         # Create the response
         self.send_response(200)
-        self.send_header("Content-type", "text/html")
+        self.send_header("Content-type", "application/json")
         self.end_headers()
-        self.wfile.write(bytes("<html><head><title>https://pythonbasics.org</title></head>", "utf-8"))
-        self.wfile.write(bytes("<p>Request: %s</p>" % self.path, "utf-8"))
-        self.wfile.write(bytes("<body>", "utf-8"))
-        self.wfile.write(bytes("<p>This is an example web server.</p>", "utf-8"))
-        self.wfile.write(bytes("</body></html>", "utf-8"))
+        self.wfile.write(bytes(Status.export(), "utf-8"))
 
 
 ###########################################################################
@@ -74,73 +72,69 @@ def run_web_server(hostname="localhost", port=8180):
     Return Value:
         None
     '''
-    _webserver = HTTPServer((hostname, port), BasicWebServer)
-    print("Server started http://%s:%s" % (hostname, port))
+    Status.webserver = HTTPServer((hostname, port), BasicWebServer)
 
     try:
-        _webserver.serve_forever()
+        Status.webserver.serve_forever()
     except KeyboardInterrupt:
         pass
 
-    _webserver.server_close()
-    print("Server stopped.")
+    Status.webserver.server_close()
 
 
 
 #
 # start_web_server
 #
-def start_web_server(hostname="localhost", port=8180, forking=True):
+def start_web_server(hostname="localhost", port=8180, threaded=True):
     '''
-    Start the web server (forking if required)
+    Start the web server (threaded if required)
 
     Parameters:
         hostname: The hostname/ip address for the server
         port: The port to listen on
-        forking: If true, fork a new process to run the web server
+        threaded: If true, start a new thread to run the web server
 
     Return Value:
         Process: The process running the web server. None if not forked.
     '''
-    # See if we need to fork the server
-    if forking:
-        _webserver_process = multiprocessing.Process(
-            target=run_web_server, kwargs={ "hostname": hostname, "port": port })
-        _webserver_process.start()
+    # See if we need to start a new thread
+    if threaded:
+        Status.webserver_thread = Thread(target=run_web_server,
+                kwargs={ "hostname": hostname, "port": port })
+        Status.webserver_thread.start()
 
     else:
-        _webserver_process = None
+        Status.webserver_thread = None
         run_web_server(hostname=hostname, port=port)
 
-    return _webserver_process
+    return Status.webserver_thread
 
 
 #
 # stop_web_server
 #
-def stop_web_server(process=None, timeout=60):
+def stop_web_server(thread=None, timeout=60):
     '''
-    Stop the web server (if forked)
+    Stop the web server (if run in a thread)
 
     Parameters:
-        process: The process that was forked to run the web server
+        thread: The thread that was started to run the web server
 
     Return Value:
         none
     '''
-    if not process: return
+    if not thread: thread = Status.webserver_thread
     if timeout < 0: timeout = 0
     if timeout > 600: timeout = 600
 
     # Try to end the web server
-    try:
-        process.terminate()
-    except:
-        pass
+    Status.webserver.shutdown()
 
     # Join and close the process to clean it up
-    process.join(timeout=timeout)
-    process.close()
+    thread.join(timeout=timeout)
+    Status.webserver = None
+    Status.webserver_thread = None
 
 
 ###########################################################################

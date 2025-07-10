@@ -9,7 +9,7 @@
 * Module initialisation
 *
 '''
-__all__ = [ "ApplicationStatus", "BasicWebServer", "start_web_server", "stop_web_server" ]
+__all__ = [ "ApplicationStatus", "Status", "BasicWebServer", "start_web_server", "stop_web_server" ]
 
-from .application_status import ApplicationStatus
+from .application_status import ApplicationStatus, Status
 from .web_server import BasicWebServer, start_web_server, stop_web_server

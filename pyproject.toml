@@ -15,7 +15,9 @@ classifiers = [
     "Programming Language :: Python :: 3",
     "Operating System :: OS Independent",
 ]
-dependencies = []
+dependencies = [
+  "schedule",
+]
 
 [project.urls]
 "Homepage" = "https://github.com/JasonPiszcyk/ApplicationStatus"

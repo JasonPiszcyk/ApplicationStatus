@@ -50,4 +50,5 @@ def new_request():
     time. sleep(1)
 
     yield pytest.web_request
-    stop_web_server(process=_webserver)
+    stop_web_server(thread=_webserver, timeout=15)
+    # stop_web_server()
